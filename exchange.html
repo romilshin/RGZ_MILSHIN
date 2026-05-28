@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мильшин Роман Антонович. РГЗ</title>
+    <link rel="stylesheet" href="rgz.css">
+    <script src="exchange.js"></script>
+    <style>
+        a:hover {
+            font-size: 24px;
+        }
+
+        div.menu a:hover {
+            font-size: 38px;
+            transition: 0.3s;
+        }
+
+        .chart-container {
+            overflow-x: auto;
+            padding: 15px 0;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .bar {
+            background-color: rgb(40, 129, 208);
+            width: 30px;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .bar:hover {
+            background-color: rgb(40, 129, 208);
+            opacity: 0.85;
+            transform: scaleY(1.02);
+        }
+        .bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+            margin: 0 3px;
+        }
+        .bar-label {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 8px;
+            white-space: nowrap;
+            color: black;
+        }
+    </style>
+
+    <script>
+        let currentRate = null;
+
+        function loadTodayRate() {
+            fetch('https://www.cbr-xml-daily.ru/daily_json.js')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.Valute && data.Valute.NZD) {
+                        currentRate = data.Valute.NZD.Value;
+                        document.getElementById('nzd-rate').innerHTML = 
+                            `1 NZD = ${currentRate.toFixed(4)} RUB`;
+                        updateFromRub();
+                        drawChart();
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('nzd-rate').innerHTML = 'Не удалось загрузить курс';
+                    drawChart();
+                });
+        }
+
+        function drawChart() {
+            let container = document.getElementById('bars');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            let rates = curs.map(item => item.rate);
+            let maxRate = Math.max(...rates);
+            let minRate = Math.min(...rates);
+            let range = maxRate - minRate || 1;
+
+            let minHeight = 50;
+            let maxHeight = 220;
+            
+            for (let i = 0; i < curs.length; i++) {
+                let item = curs[i];
+                
+                let height = minHeight + ((item.rate - minRate) / range) * (maxHeight - minHeight);
+                
+                let wrapper = document.createElement('div');
+                wrapper.className = 'bar-container';
+                
+                let bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = `${height}px`;
+                
+                bar.onmouseenter = () => bar.style.backgroundColor = 'rgb(40, 129, 208);';
+                bar.onmouseleave = () => bar.style.backgroundColor = 'rgb(40, 129, 208);';
+                bar.onclick = (function(date, rate) {
+                    return function() {
+                        document.getElementById('info').innerHTML = 
+                            `<strong>${date}</strong><br>Курс: ${rate.toFixed(4)} RUB<br><small>1 NZD</small>`;
+                    };
+                })(item.date, item.rate);
+                
+                let label = document.createElement('div');
+                label.className = 'bar-label';
+                label.innerText = item.date.slice(0, 5); 
+                
+                wrapper.appendChild(bar);
+                wrapper.appendChild(label);
+                container.appendChild(wrapper);
+            }
+        }
+
+        function updateFromRub() {
+            if (!currentRate || currentRate <= 0) return;
+            let rub = parseFloat(document.getElementById('rub-input').value) || 0;
+            document.getElementById('nzd-input').value = (rub / currentRate).toFixed(2);
+        }
+
+        function updateFromNzd() { 
+            if (!currentRate) return;
+            let nzd = parseFloat(document.getElementById('nzd-input').value) || 0;
+            document.getElementById('rub-input').value = (nzd * currentRate).toFixed(2);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTodayRate();
+            document.getElementById('rub-input').oninput = updateFromRub;
+            document.getElementById('nzd-input').oninput = updateFromNzd;
+        });        
+    </script>
+</head>
+<body>
+    <header>
+        НГТУ, ФБ, РГЗ
+    </header>
+
+    <main>
+        <div class="menu">
+            <li><a href="info.html">О компании</a></li>
+            <li><a href="news.html">Новости</a></li>
+            <li><a href="exchange.html" style="text-decoration: underline; font-size: 38px;">Курс валют</a></li>
+            <li><a href="contacts.html">Контактные данные</a></li>
+            <li><a href="video.html">Видео</a></li>
+        </div>
+
+        <div style="width: 100%; padding: 10px;">
+            <h1>Курс валют</h1>
+            <a style="font-size: 24px;">🇳🇿 Новозеландский доллар:</a>
+            <span id="nzd-rate" style="font-size: 24px; font-weight: bold; margin-left: 10px;"></span>
+            
+            <h1 style="margin-top: 25px;">Калькулятор валют</h1>
+
+            <label style="font-size: 24px;">Сумма в рублях (RUB)</label>
+            <div>
+                <input type="number" id="rub-input" value="0" style="font-size: 24px; padding: 8px; width: 200px;">
+            </div>
+            
+            <label style="font-size: 24px;">Сумма в новозеландских долларах (NZD)</label>
+            <div>
+                <input type="number" id="nzd-input" value="1" style="font-size: 24px; padding: 8px; width: 200px;">
+            </div>
+            
+            <hr>
+            
+            <h1>Динамика курса за апрель</h1>
+            
+            <div class="chart-container">
+                <div id="bars" style="display: flex; align-items: flex-end; height: 250px; padding: 10px 5px;"></div>
+            </div>
+            <div id="info" class="info-box">
+            </div>
+            
+        </div>
+    </main>
+
+    <footer>
+        &copy; Мильшин Роман, ФБИ-42, 2 курс, 2026
+    </footer>
+</body>
+</html>
